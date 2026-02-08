@@ -27,7 +27,8 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/dashboard/');
+        // In development, use Traefik proxy on port 80
+        const response = await fetch('http://localhost/api/dashboard/');
         if (!response.ok) {
           throw new Error('Error al cargar el dashboard');
         }
