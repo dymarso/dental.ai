@@ -67,10 +67,45 @@ fi
 
 if [ -f manage.py ]; then
     echo "📦 Applying migrations..."
-    if ! python manage.py migrate --noinput; then
+    migration_output=$(python manage.py migrate --noinput 2>&1)
+    migration_status=$?
+    
+    if [ $migration_status -ne 0 ]; then
         echo "❌ Migration failed! This is a fatal error."
-        echo "   Database tables are required for the application to work."
-        echo "   Please check the database connection and migration files."
+        echo ""
+        echo "$migration_output"
+        echo ""
+        
+        # Check if it's an InconsistentMigrationHistory error
+        if echo "$migration_output" | grep -q "InconsistentMigrationHistory"; then
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "⚠️  MIGRATION HISTORY INCONSISTENCY DETECTED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "This error occurs when migrations were applied in the wrong order."
+            echo ""
+            echo "To fix this issue, run the migration fix script:"
+            echo "  bash /backend/_config/scripts/fix_migration_history.sh"
+            echo ""
+            echo "Or manually fix the migration history:"
+            echo "  1. Connect to your database"
+            echo "  2. Clear migration history: DELETE FROM django_migrations;"
+            echo "  3. Fake all migrations in order:"
+            echo "     python manage.py migrate --fake patients"
+            echo "     python manage.py migrate --fake reports"
+            echo "     python manage.py migrate --fake profiles"
+            echo "     python manage.py migrate --fake treatments"
+            echo "     python manage.py migrate --fake appointments"
+            echo "     python manage.py migrate --fake budgets"
+            echo "     python manage.py migrate --fake clinical"
+            echo "     python manage.py migrate --fake finances"
+            echo ""
+            echo "See /backend/_config/scripts/MIGRATION_FIX_README.md for details."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        else
+            echo "   Database tables are required for the application to work."
+            echo "   Please check the database connection and migration files."
+        fi
         exit 1
     fi
     echo "✅ Migrations applied successfully"
