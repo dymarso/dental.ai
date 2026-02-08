@@ -82,7 +82,11 @@ fi
 
 echo ""
 echo "Step 2: Backing up current migration records..."
-psql -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" -d "${PGDATABASE}" -c "\COPY (SELECT * FROM django_migrations) TO '/tmp/django_migrations_backup.csv' CSV HEADER;" || echo "⚠️ Backup failed, continuing anyway..."
+psql -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" -d "${PGDATABASE}" -c "\COPY (SELECT * FROM django_migrations) TO '/tmp/django_migrations_backup.csv' CSV HEADER;" || {
+    echo "⚠️ Backup failed - you will not be able to restore if the migration fix fails."
+    echo "   Continue at your own risk or cancel now with Ctrl+C"
+    sleep 5
+}
 
 echo ""
 echo "Step 3: Clearing migration history from database..."
@@ -94,7 +98,13 @@ echo "✅ Migration history cleared"
 
 echo ""
 echo "Step 4: Faking all migrations to match current schema..."
-cd /backend
+
+# Determine the backend directory (script is in backend/_config/scripts/)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BACKEND_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$BACKEND_DIR"
+
+echo "Working directory: $(pwd)"
 
 # Fake migrations in the correct dependency order
 python manage.py migrate --fake patients || {
