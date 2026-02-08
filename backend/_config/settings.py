@@ -56,23 +56,14 @@ else:
             f"www.{DOMAIN}",
         ])
 
-# Dynamically find all apps in the backend folder
-def find_apps(base_dir, exclude_dirs=None):
-    exclude_dirs = exclude_dirs or []
-    # Always exclude config directories to prevent them from being added as apps
-    exclude_dirs = list(exclude_dirs) + ['_config']
-    apps = []
-    for item in os.listdir(base_dir):
-        item_path = os.path.join(base_dir, item)
-        if (
-            os.path.isdir(item_path) and
-            item not in exclude_dirs and
-            os.path.isfile(os.path.join(item_path, '__init__.py'))
-        ):
-            apps.append(item)
-    return apps
-
 # Application definition
+# Apps are explicitly ordered to respect migration dependencies:
+# - patients: base app with no dependencies
+# - reports: independent app
+# - profiles: depends on Django auth
+# - treatments: depends on patients
+# - appointments, budgets, clinical: depend on patients
+# - finances: depends on patients and treatments (must come last)
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -85,7 +76,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-] + find_apps(BASE_DIR)
+    # Custom apps in dependency order
+    'patients',      # No dependencies - base app
+    'reports',       # No dependencies - independent
+    'profiles',      # Depends on Django auth
+    'treatments',    # Depends on patients
+    'appointments',  # Depends on patients
+    'budgets',       # Depends on patients
+    'clinical',      # Depends on patients
+    'finances',      # Depends on patients and treatments - must be last
+]
 if DEBUG:
     INSTALLED_APPS += ["django_extensions"]
 else:
