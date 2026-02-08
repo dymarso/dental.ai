@@ -48,10 +48,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/backend \
     PIP_NO_CACHE_DIR=1
 
-# Minimal runtime deps with PostgreSQL 17 client (latest)
+# Minimal runtime deps with PostgreSQL client
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
     libpq-dev \
+    postgresql-client \
     gettext \
     curl \
     netcat-openbsd \
@@ -61,11 +62,6 @@ RUN apt-get update \
     ffmpeg \
     imagemagick \
     wget \
-    gnupg \
- && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
- && echo "deb http://apt.postgresql.org/pub/repos/apt/ bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
- && apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client-17 \
  && rm -rf /var/lib/apt/lists/* \
  && apt-get clean
 

@@ -58,6 +58,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
+# Import dashboard view
+from _config.dashboard import dashboard_summary
+urlpatterns.append(path("dashboard/", dashboard_summary, name="dashboard"))
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 apps = find_apps(BASE_DIR, exclude_dirs=["backend", "migrations"])
 
