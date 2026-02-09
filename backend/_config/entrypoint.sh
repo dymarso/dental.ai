@@ -67,12 +67,103 @@ fi
 
 if [ -f manage.py ]; then
     echo "📦 Applying migrations..."
-    if ! python manage.py migrate --noinput; then
-        echo "❌ Migration failed! This is a fatal error."
-        echo "   Database tables are required for the application to work."
-        echo "   Please check the database connection and migration files."
-        exit 1
+    
+    # Try to apply migrations
+    migration_output=$(python manage.py migrate --noinput 2>&1)
+    migration_exit_code=$?
+    
+    # Check if migration failed due to InconsistentMigrationHistory
+    if [ $migration_exit_code -ne 0 ]; then
+        if echo "$migration_output" | grep -q "InconsistentMigrationHistory"; then
+            echo "⚠️  Detected InconsistentMigrationHistory error"
+            echo "🔧 Attempting to fix migration history..."
+            
+            # Fix migration history by removing and re-inserting in correct order
+            python - <<'EOF'
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', '_config.settings')
+django.setup()
+
+from django.db import connection
+from datetime import datetime, timedelta
+
+print("Fixing migration history...")
+
+with connection.cursor() as cursor:
+    # Check if django_migrations table exists
+    cursor.execute("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'django_migrations'
+        );
+    """)
+    table_exists = cursor.fetchone()[0]
+    
+    if table_exists:
+        # Get current problematic migrations
+        affected_apps = ['patients', 'treatments', 'finances', 'appointments', 'budgets', 'clinical']
+        cursor.execute("""
+            SELECT app, name FROM django_migrations 
+            WHERE app IN %s AND name = '0001_initial';
+        """, (tuple(affected_apps),))
+        
+        existing_migrations = cursor.fetchall()
+        
+        if existing_migrations:
+            print(f"Found {len(existing_migrations)} initial migrations to fix")
+            
+            # Delete problematic migration records
+            cursor.execute("""
+                DELETE FROM django_migrations 
+                WHERE app IN %s AND name = '0001_initial';
+            """, (tuple(affected_apps),))
+            
+            print(f"Deleted {cursor.rowcount} migration records")
+            
+            # Re-insert in correct order with proper timestamps
+            correct_order = [
+                'patients',      # No dependencies
+                'treatments',    # Depends on patients
+                'appointments',  # Depends on patients
+                'budgets',       # Depends on patients
+                'clinical',      # Depends on patients
+                'finances',      # Depends on patients and treatments
+            ]
+            
+            base_time = datetime.now()
+            for idx, app in enumerate(correct_order):
+                if any(m[0] == app for m in existing_migrations):
+                    timestamp = base_time + timedelta(seconds=idx)
+                    cursor.execute("""
+                        INSERT INTO django_migrations (app, name, applied)
+                        VALUES (%s, %s, %s);
+                    """, (app, '0001_initial', timestamp))
+                    print(f"Re-inserted {app}.0001_initial")
+            
+            print("✅ Migration history fixed successfully")
+        else:
+            print("No problematic migrations found")
+    else:
+        print("Migration table doesn't exist yet, skipping fix")
+EOF
+            
+            # Retry migration after fix
+            echo "📦 Retrying migrations after fix..."
+            if ! python manage.py migrate --noinput; then
+                echo "❌ Migration failed even after fix attempt!"
+                echo "   Please check the database connection and migration files."
+                exit 1
+            fi
+        else
+            echo "❌ Migration failed! This is a fatal error."
+            echo "   Error output:"
+            echo "$migration_output"
+            echo "   Please check the database connection and migration files."
+            exit 1
+        fi
     fi
+    
     echo "✅ Migrations applied successfully"
 
     echo "📁 Collecting static files..."
