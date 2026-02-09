@@ -68,105 +68,40 @@ fi
 if [ -f manage.py ]; then
     echo "📦 Applying migrations..."
     
-    # Try to apply migrations (disable set -e temporarily to capture exit code)
-    set +e
-    migration_output=$(python manage.py migrate --noinput 2>&1)
-    migration_exit_code=$?
-    set -e
-    
-    # Check if migration failed due to InconsistentMigrationHistory
-    if [ $migration_exit_code -ne 0 ]; then
-        if echo "$migration_output" | grep -q "InconsistentMigrationHistory"; then
+    # Try to apply migrations
+    if ! python manage.py migrate --noinput 2>&1 | tee /tmp/migrate_output.log; then
+        # Check if it's an InconsistentMigrationHistory error
+        if grep -q "InconsistentMigrationHistory" /tmp/migrate_output.log; then
             echo "⚠️  Detected InconsistentMigrationHistory error"
             echo "🔧 Attempting to fix migration history..."
             
-            # Fix migration history by removing and re-inserting in correct order
-            python - <<'EOF'
-import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', '_config.settings')
-django.setup()
-
-from django.db import connection
-from datetime import datetime, timedelta
-
-print("Fixing migration history...")
-
-with connection.cursor() as cursor:
-    # Check if django_migrations table exists
-    cursor.execute("""
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = 'django_migrations'
-        );
-    """)
-    table_exists = cursor.fetchone()[0]
-    
-    if table_exists:
-        # Get current problematic migrations
-        affected_apps = ['patients', 'treatments', 'finances', 'appointments', 'budgets', 'clinical']
-        cursor.execute("""
-            SELECT app, name FROM django_migrations 
-            WHERE app IN %s AND name = '0001_initial';
-        """, (tuple(affected_apps),))
-        
-        existing_migrations = cursor.fetchall()
-        
-        if existing_migrations:
-            print(f"Found {len(existing_migrations)} initial migrations to fix")
+            # Extract the problematic migration from error message
+            # Error format: "Migration X is applied before its dependency Y"
+            PROBLEM_MIGRATION=$(grep -oP "Migration \K[^ ]*(?= is applied before)" /tmp/migrate_output.log || echo "")
+            DEPENDENCY_MIGRATION=$(grep -oP "dependency \K[^ ]*(?= on database)" /tmp/migrate_output.log || echo "")
             
-            # Delete problematic migration records
-            cursor.execute("""
-                DELETE FROM django_migrations 
-                WHERE app IN %s AND name = '0001_initial';
-            """, (tuple(affected_apps),))
+            if [ -n "$DEPENDENCY_MIGRATION" ]; then
+                echo "🔄 Faking dependency migration: $DEPENDENCY_MIGRATION"
+                python manage.py migrate --fake ${DEPENDENCY_MIGRATION%.*} ${DEPENDENCY_MIGRATION##*.} || true
+            fi
             
-            print(f"Deleted {cursor.rowcount} migration records")
-            
-            # Re-insert in correct order with proper timestamps
-            correct_order = [
-                'patients',      # No dependencies
-                'treatments',    # Depends on patients
-                'appointments',  # Depends on patients
-                'budgets',       # Depends on patients
-                'clinical',      # Depends on patients
-                'finances',      # Depends on patients and treatments
-            ]
-            
-            base_time = datetime.now()
-            for idx, app in enumerate(correct_order):
-                if any(m[0] == app for m in existing_migrations):
-                    timestamp = base_time + timedelta(seconds=idx)
-                    cursor.execute("""
-                        INSERT INTO django_migrations (app, name, applied)
-                        VALUES (%s, %s, %s);
-                    """, (app, '0001_initial', timestamp))
-                    print(f"Re-inserted {app}.0001_initial")
-            
-            print("✅ Migration history fixed successfully")
-        else:
-            print("No problematic migrations found")
-    else:
-        print("Migration table doesn't exist yet, skipping fix")
-EOF
-            
-            # Retry migration after fix
+            # Retry migrations
             echo "📦 Retrying migrations after fix..."
             if ! python manage.py migrate --noinput; then
                 echo "❌ Migration failed even after fix attempt!"
                 echo "   Please check the database connection and migration files."
                 exit 1
             fi
+            echo "✅ Migrations applied successfully after fix"
         else
             echo "❌ Migration failed! This is a fatal error."
-            echo "   Error output:"
-            echo "$migration_output"
+            echo "   Database tables are required for the application to work."
             echo "   Please check the database connection and migration files."
             exit 1
         fi
+    else
+        echo "✅ Migrations applied successfully"
     fi
-    
-    echo "✅ Migrations applied successfully"
 
     echo "📁 Collecting static files..."
     python manage.py collectstatic --noinput --clear || echo "⚠️ Static collection failed, continuing..."
