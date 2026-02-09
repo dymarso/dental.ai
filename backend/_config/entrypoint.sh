@@ -68,9 +68,11 @@ fi
 if [ -f manage.py ]; then
     echo "📦 Applying migrations..."
     
-    # Try to apply migrations
+    # Try to apply migrations (disable set -e temporarily to capture exit code)
+    set +e
     migration_output=$(python manage.py migrate --noinput 2>&1)
     migration_exit_code=$?
+    set -e
     
     # Check if migration failed due to InconsistentMigrationHistory
     if [ $migration_exit_code -ne 0 ]; then
