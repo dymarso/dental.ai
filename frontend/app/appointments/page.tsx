@@ -9,8 +9,17 @@ import { AppointmentCard } from "@/app/components/appointment-card"
 import { CalendarPlus, Calendar as CalendarIcon } from "lucide-react"
 import apiClient from "@/app/lib/api"
 
+interface Appointment {
+  id: string | number
+  patient_name: string
+  date: string
+  time: string
+  treatment_type: string
+  status: "scheduled" | "confirmed" | "completed" | "cancelled"
+}
+
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -100,11 +109,11 @@ export default function AppointmentsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {appointments.map((appointment: any) => (
+                {appointments.map((appointment) => (
                   <AppointmentCard 
                     key={appointment.id} 
                     appointment={{
-                      id: appointment.id,
+                      id: String(appointment.id),
                       patientName: appointment.patient_name || "Sin nombre",
                       date: appointment.date || "",
                       time: appointment.time || "",

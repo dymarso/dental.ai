@@ -9,8 +9,16 @@ import { Badge } from "@/app/components/ui/badge"
 import { FileText, Plus } from "lucide-react"
 import apiClient from "@/app/lib/api"
 
+interface Treatment {
+  id: string | number
+  name?: string
+  treatment_type?: string
+  patient_name?: string
+  status: "in_progress" | "completed" | "cancelled" | "pending"
+}
+
 export default function TreatmentsPage() {
-  const [treatments, setTreatments] = useState<any[]>([])
+  const [treatments, setTreatments] = useState<Treatment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -111,7 +119,7 @@ export default function TreatmentsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {treatments.map((treatment: any) => (
+                {treatments.map((treatment) => (
                   <div
                     key={treatment.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"

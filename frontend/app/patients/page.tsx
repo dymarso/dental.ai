@@ -10,8 +10,15 @@ import { DataTable } from "@/app/components/data-table"
 import { UserPlus, Search } from "lucide-react"
 import apiClient from "@/app/lib/api"
 
+interface Patient {
+  id: string | number
+  name: string
+  email: string
+  phone: string
+}
+
 export default function PatientsPage() {
-  const [patients, setPatients] = useState<any[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -45,7 +52,7 @@ export default function PatientsPage() {
     { 
       key: "actions", 
       header: "Acciones",
-      render: (_: any, row: any) => (
+      render: () => (
         <Button variant="outline" size="sm">Ver</Button>
       )
     }
