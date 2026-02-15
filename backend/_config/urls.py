@@ -60,7 +60,7 @@ urlpatterns = [
 
 # Import dashboard view
 from _config.dashboard import dashboard_summary
-urlpatterns.append(path("dashboard/", dashboard_summary, name="dashboard"))
+urlpatterns.append(path("api/dashboard/", dashboard_summary, name="dashboard"))
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 apps = find_apps(BASE_DIR, exclude_dirs=["backend", "migrations"])
@@ -68,7 +68,7 @@ apps = find_apps(BASE_DIR, exclude_dirs=["backend", "migrations"])
 for app in apps:
     try:
         importlib.import_module(f"{app}.urls")  # check if app has urls
-        urlpatterns.append(path(f"{app}/", include(f"{app}.urls")))
+        urlpatterns.append(path(f"api/{app}/", include(f"{app}.urls")))
     except ModuleNotFoundError:
         # silently skip apps without urls.py
         pass
