@@ -28,13 +28,16 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         // Use relative URL to leverage Next.js rewrites
+        // In production, this will be rewritten to the backend URL
         const response = await fetch('/api/dashboard/');
         if (!response.ok) {
-          throw new Error('Error al cargar el dashboard');
+          const errorText = await response.text();
+          throw new Error(`Error al cargar el dashboard: ${response.status} ${errorText}`);
         }
         const result = await response.json();
         setData(result);
       } catch (err) {
+        console.error('Dashboard fetch error:', err);
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
         setLoading(false);
