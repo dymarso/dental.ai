@@ -2,11 +2,20 @@
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    // Only add rewrite if API URL is configured
+    if (!apiUrl) {
+      console.warn('NEXT_PUBLIC_API_URL not set, API calls will fail');
+      return [];
+    }
+    
     // Ensure URL has protocol
     const destination = apiUrl.startsWith('http') 
-      ? `${apiUrl}/api/:path*`
-      : `https://${apiUrl}/api/:path*`;
+      ? `${apiUrl}/:path*`
+      : `https://${apiUrl}/:path*`;
+    
+    console.log('API rewrite configured:', { source: '/api/:path*', destination });
     
     return [
       {
