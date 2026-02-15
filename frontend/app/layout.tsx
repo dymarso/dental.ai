@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "@/app/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "Dental.AI - Gestión de Consultorio Dental",
@@ -13,8 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className="antialiased bg-gray-50">
+      <body className="antialiased">
         {children}
+        <Toaster />
       </body>
     </html>
   );
