@@ -138,7 +138,25 @@ frontend/
 - Docker y Docker Compose
 - Git
 
-### Inicio Rápido
+### Despliegue en Producción
+
+El sistema está desplegado en:
+- **Frontend:** Vercel (https://dientex.com)
+- **Backend:** Railway (https://api.dientex.com)
+- **Base de Datos:** PostgreSQL en Railway
+
+**📖 Guías de Despliegue:**
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Guía completa de despliegue
+- [VERCEL_SETUP.md](VERCEL_SETUP.md) - Configuración de Vercel paso a paso
+- [CHANGES.md](CHANGES.md) - Cambios recientes y estructura de API
+
+**🔧 Verificación:**
+```bash
+# Ejecutar script de verificación
+./verify-deployment.sh
+```
+
+### Inicio Rápido (Desarrollo Local)
 
 1. **Clonar el repositorio:**
 ```bash
@@ -163,6 +181,8 @@ docker compose -f development.yml up -d
   - Contraseña: `admin`
 
 ### Endpoints de la API
+
+**Nota:** Todos los endpoints de API ahora usan el prefijo `/api/`
 
 **Dashboard:**
 - `GET /api/dashboard/` - Resumen del dashboard
