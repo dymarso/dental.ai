@@ -27,18 +27,28 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching dashboard data from /api/dashboard/');
         // Use relative URL to leverage Next.js rewrites
         // In production, this will be rewritten to the backend URL
-        const response = await fetch('/api/dashboard/');
+        const response = await fetch('/api/dashboard/', {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Error al cargar el dashboard: ${response.status} ${errorText}`);
+          console.error('Response error:', errorText);
+          throw new Error(`Error ${response.status}: No se pudo conectar con el servidor`);
         }
         const result = await response.json();
+        console.log('Dashboard data loaded successfully');
         setData(result);
       } catch (err) {
         console.error('Dashboard fetch error:', err);
-        setError(err instanceof Error ? err.message : 'Error desconocido');
+        setError(err instanceof Error ? err.message : 'Error desconocido al cargar los datos');
       } finally {
         setLoading(false);
       }
@@ -49,16 +59,63 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Cargando...</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-3xl font-bold text-gray-900">Dental.AI</h1>
+            <p className="mt-1 text-sm text-gray-600">Sistema de Gestión de Consultorio Dental</p>
+          </div>
+        </header>
+
+        {/* Loading Skeleton */}
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+                <p className="mt-4 text-gray-600">Cargando dashboard...</p>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl text-red-600">Error: {error}</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-3xl font-bold text-gray-900">Dental.AI</h1>
+            <p className="mt-1 text-sm text-gray-600">Sistema de Gestión de Consultorio Dental</p>
+          </div>
+        </header>
+
+        {/* Error Message */}
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <div className="flex items-center">
+                <svg className="h-6 w-6 text-red-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-lg font-medium text-red-800">Error al cargar el dashboard</h3>
+                  <p className="mt-1 text-sm text-red-700">{error}</p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
