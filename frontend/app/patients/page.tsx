@@ -38,6 +38,19 @@ export default function PatientsPage() {
     patient.phone?.includes(searchTerm)
   )
 
+  const columns = [
+    { key: "name", header: "Nombre" },
+    { key: "email", header: "Email" },
+    { key: "phone", header: "Teléfono" },
+    { 
+      key: "actions", 
+      header: "Acciones",
+      render: (_: any, row: any) => (
+        <Button variant="outline" size="sm">Ver</Button>
+      )
+    }
+  ]
+
   if (loading) {
     return (
       <MainLayout>
@@ -114,7 +127,7 @@ export default function PatientsPage() {
                 </p>
               </div>
             ) : (
-              <DataTable data={filteredPatients} />
+              <DataTable data={filteredPatients} columns={columns} searchable={false} />
             )}
           </CardContent>
         </Card>
