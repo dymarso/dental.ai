@@ -79,6 +79,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'import_export',
+    'django_celery_beat',
+    'django_celery_results',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -456,3 +458,102 @@ else:
 # Debug prints
 print(f"⊧ {DATABASES['default']['ENGINE']}")
 print(f"⊧ DEBUG: {DEBUG} {ALLOWED_HOSTS}")
+
+
+# ========================================
+# REDIS CONFIGURATION
+# ========================================
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis' if not DEBUG else 'localhost')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+REDIS_DB = int(os.getenv('REDIS_DB', 0))
+REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
+
+# Cache configuration using Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'parser_class': 'redis.connection.HiredisParser',
+            'pool_class': 'redis.BlockingConnectionPool',
+            'pool_class_kwargs': {
+                'max_connections': 50,
+                'timeout': 20,
+            },
+        },
+        'KEY_PREFIX': 'dientex',
+        'TIMEOUT': 300,  # 5 minutes default
+    }
+}
+
+# Session backend using Redis
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
+
+# ========================================
+# CELERY CONFIGURATION
+# ========================================
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = 'django-db'  # Store results in Django database
+CELERY_CACHE_BACKEND = 'default'
+
+# Celery settings
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Task result settings
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_EXPIRES = 3600  # 1 hour
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes hard limit
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit
+
+# Beat schedule for periodic tasks
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_BEAT_SCHEDULE = {
+    'send-appointment-reminders': {
+        'task': 'notifications.tasks.send_appointment_reminders',
+        'schedule': 3600.0,  # Every hour
+    },
+    'send-payment-reminders': {
+        'task': 'notifications.tasks.send_payment_reminders',
+        'schedule': 86400.0,  # Every day
+    },
+    'send-installment-reminders': {
+        'task': 'notifications.tasks.send_installment_reminders',
+        'schedule': 86400.0,  # Every day
+    },
+}
+
+
+# ========================================
+# THIRD-PARTY SERVICE CONFIGURATION
+# ========================================
+
+# SendGrid (Email)
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@dientex.com')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' if SENDGRID_API_KEY else 'django.core.mail.backends.console.EmailBackend'
+
+# Twilio (SMS/WhatsApp)
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
+TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
+TWILIO_WHATSAPP_NUMBER = os.getenv('TWILIO_WHATSAPP_NUMBER', '')
+
+# Stripe (Payments)
+STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY', '')
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+
+# Zoom (Telemedicine) - for future implementation
+ZOOM_API_KEY = os.getenv('ZOOM_API_KEY', '')
+ZOOM_API_SECRET = os.getenv('ZOOM_API_SECRET', '')
+
+# Twilio Video (Alternative for Telemedicine)
+TWILIO_VIDEO_API_KEY = os.getenv('TWILIO_VIDEO_API_KEY', '')
+TWILIO_VIDEO_API_SECRET = os.getenv('TWILIO_VIDEO_API_SECRET', '')
