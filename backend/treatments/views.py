@@ -2,12 +2,14 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Treatment, TreatmentProgress, TreatmentFile
+from .models import Treatment, TreatmentProgress, TreatmentFile, OrthodonticCase, AestheticProcedure
 from .serializers import (
     TreatmentSerializer,
     TreatmentListSerializer,
     TreatmentProgressSerializer,
-    TreatmentFileSerializer
+    TreatmentFileSerializer,
+    OrthodonticCaseSerializer,
+    AestheticProcedureSerializer
 )
 
 
@@ -93,3 +95,46 @@ class TreatmentFileViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['progress', 'file_type']
     ordering = ['-uploaded_at']
+
+
+class OrthodonticCaseViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing orthodontic cases"""
+    queryset = OrthodonticCase.objects.select_related('treatment', 'treatment__patient')
+    serializer_class = OrthodonticCaseSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['treatment', 'appliance_type']
+    ordering_fields = ['start_date', 'expected_end_date']
+    ordering = ['-start_date']
+    
+    @action(detail=True, methods=['post'])
+    def add_adjustment(self, request, pk=None):
+        """Add an adjustment to the orthodontic case"""
+        case = self.get_object()
+        
+        date = request.data.get('date')
+        description = request.data.get('description')
+        performed_by = request.data.get('performed_by')
+        
+        if not date or not description:
+            return Response(
+                {'error': 'Se requieren los campos "date" y "description"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        case.add_adjustment(date, description, performed_by)
+        
+        return Response({
+            'message': 'Ajuste agregado exitosamente',
+            'case': OrthodonticCaseSerializer(case).data
+        })
+
+
+class AestheticProcedureViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing aesthetic procedures"""
+    queryset = AestheticProcedure.objects.select_related('treatment', 'treatment__patient')
+    serializer_class = AestheticProcedureSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['treatment', 'procedure_type', 'satisfaction_rating']
+    ordering_fields = ['completion_date', 'created_at']
+    ordering = ['-completion_date', '-created_at']
+

@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from patients.models import Patient
 
 
@@ -147,6 +148,168 @@ class TreatmentProgress(models.Model):
     
     def __str__(self):
         return f"Sesión {self.session_number} - {self.treatment.treatment_type}"
+
+
+class OrthodonticCase(models.Model):
+    """Orthodontic case tracking for treatments"""
+    
+    APPLIANCE_TYPE_CHOICES = [
+        ('metal_braces', 'Brackets Metálicos'),
+        ('ceramic_braces', 'Brackets Cerámicos'),
+        ('lingual_braces', 'Brackets Linguales'),
+        ('invisalign', 'Invisalign'),
+        ('clear_aligners', 'Alineadores Transparentes'),
+        ('retainer', 'Retenedor'),
+        ('other', 'Otro'),
+    ]
+    
+    treatment = models.OneToOneField(
+        Treatment,
+        on_delete=models.CASCADE,
+        related_name='orthodontic_case',
+        verbose_name='Tratamiento'
+    )
+    
+    appliance_type = models.CharField(
+        max_length=50,
+        choices=APPLIANCE_TYPE_CHOICES,
+        verbose_name='Tipo de Aparato'
+    )
+    
+    start_date = models.DateField(verbose_name='Fecha de Inicio')
+    expected_end_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Fecha Estimada de Finalización'
+    )
+    
+    adjustments = models.JSONField(
+        default=list,
+        verbose_name='Historial de Ajustes',
+        help_text='Array de objetos con historial de ajustes'
+    )
+    
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Notas'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Última Actualización')
+    
+    class Meta:
+        verbose_name = 'Caso de Ortodoncia'
+        verbose_name_plural = 'Casos de Ortodoncia'
+        ordering = ['-start_date']
+    
+    def __str__(self):
+        return f"Ortodoncia - {self.treatment.patient.full_name} ({self.appliance_type})"
+    
+    def add_adjustment(self, date, description, performed_by=None):
+        """Add an adjustment to the history"""
+        adjustment = {
+            'date': date.isoformat() if hasattr(date, 'isoformat') else date,
+            'description': description,
+            'performed_by': performed_by
+        }
+        
+        if not isinstance(self.adjustments, list):
+            self.adjustments = []
+        
+        self.adjustments.append(adjustment)
+        self.save()
+
+
+class AestheticProcedure(models.Model):
+    """Aesthetic procedure tracking for treatments"""
+    
+    PROCEDURE_TYPE_CHOICES = [
+        ('whitening', 'Blanqueamiento'),
+        ('veneers', 'Carillas'),
+        ('bonding', 'Bonding'),
+        ('gum_contouring', 'Contorneado de Encías'),
+        ('smile_design', 'Diseño de Sonrisa'),
+        ('composite_filling', 'Resina Estética'),
+        ('other', 'Otro'),
+    ]
+    
+    treatment = models.OneToOneField(
+        Treatment,
+        on_delete=models.CASCADE,
+        related_name='aesthetic_procedure',
+        verbose_name='Tratamiento'
+    )
+    
+    procedure_type = models.CharField(
+        max_length=50,
+        choices=PROCEDURE_TYPE_CHOICES,
+        verbose_name='Tipo de Procedimiento'
+    )
+    
+    product_used = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='Producto Utilizado',
+        help_text='Marca/nombre del producto utilizado'
+    )
+    
+    before_photo = models.ImageField(
+        upload_to='aesthetic_procedures/before/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name='Foto Antes'
+    )
+    
+    after_photo = models.ImageField(
+        upload_to='aesthetic_procedures/after/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name='Foto Después'
+    )
+    
+    satisfaction_rating = models.PositiveSmallIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='Calificación de Satisfacción',
+        help_text='1-5 estrellas'
+    )
+    
+    completion_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Fecha de Finalización'
+    )
+    
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Notas'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Última Actualización')
+    
+    class Meta:
+        verbose_name = 'Procedimiento Estético'
+        verbose_name_plural = 'Procedimientos Estéticos'
+        ordering = ['-completion_date', '-created_at']
+    
+    def __str__(self):
+        return f"{self.get_procedure_type_display()} - {self.treatment.patient.full_name}"
+    
+    def clean(self):
+        """Validate satisfaction rating"""
+        super().clean()
+        
+        if self.satisfaction_rating is not None:
+            if self.satisfaction_rating < 1 or self.satisfaction_rating > 5:
+                raise ValidationError(
+                    'La calificación de satisfacción debe estar entre 1 y 5'
+                )
 
 
 class TreatmentFile(models.Model):

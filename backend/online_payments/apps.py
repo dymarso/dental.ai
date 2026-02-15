@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class OnlinePaymentsConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'online_payments'
+    verbose_name = 'Pagos en Línea'

@@ -15,6 +15,7 @@
 
 volumes:
   db_data:
+  redis_data:
 
 services:
   traefik:
@@ -84,6 +85,8 @@ services:
       DB_NAME: "postgres"
       DB_USER: "postgres"
       DB_PASSWORD: "postgres"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
       DJANGO_SUPERUSER_USERNAME: "admin"
       DJANGO_SUPERUSER_PASSWORD: "admin"
       DJANGO_SUPERUSER_EMAIL: "3@edy.chat"
@@ -95,6 +98,8 @@ services:
       - ./backend:/backend:delegated
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
@@ -201,6 +206,70 @@ services:
       timeout: 3s
       retries: 10
     restart: always
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: always
+
+  celery:
+    build:
+      context: .
+      dockerfile: backend/_config/Dockerfile.development
+    command: celery -A _config worker -l info
+    environment:
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: "INSECURE-DEV-KEY-CHANGE-IN-PRODUCTION"
+      DOMAIN: "localhost"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_NAME: "postgres"
+      DB_USER: "postgres"
+      DB_PASSWORD: "postgres"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      ML_SERVICE_URL: "${ML_SERVICE_URL:-}"
+    volumes:
+      - ./backend:/backend:delegated
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/_config/Dockerfile.development
+    command: celery -A _config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: "INSECURE-DEV-KEY-CHANGE-IN-PRODUCTION"
+      DOMAIN: "localhost"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_NAME: "postgres"
+      DB_USER: "postgres"
+      DB_PASSWORD: "postgres"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      ML_SERVICE_URL: "${ML_SERVICE_URL:-}"
+    volumes:
+      - ./backend:/backend:delegated
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
 
 # Initialization Section ------------------

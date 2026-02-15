@@ -13,6 +13,8 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             'id',
+            'uuid',
+            'patient_number',
             'first_name',
             'last_name',
             'full_name',
@@ -23,12 +25,17 @@ class PatientSerializer(serializers.ModelSerializer):
             'email',
             'preferred_contact_method',
             'whatsapp_link',
+            'emergency_contact_name',
+            'emergency_contact_phone',
+            'emergency_contact_relationship',
             'notes',
             'is_active',
+            'is_deleted',
+            'deleted_at',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'uuid', 'patient_number', 'created_at', 'updated_at', 'deleted_at']
 
 
 class PatientListSerializer(serializers.ModelSerializer):
