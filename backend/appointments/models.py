@@ -1,5 +1,7 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from patients.models import Patient
+from datetime import datetime, time, timedelta
 
 
 class Appointment(models.Model):
@@ -60,6 +62,34 @@ class Appointment(models.Model):
         verbose_name='Estado'
     )
     
+    # Telemedicine
+    telemedicine_enabled = models.BooleanField(
+        default=False,
+        verbose_name='Telemedicina Habilitada'
+    )
+    video_link = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name='Enlace de Video',
+        help_text='Enlace para sesión de telemedicina (Zoom, Meet, etc.)'
+    )
+    
+    # Public Booking
+    public_booking = models.BooleanField(
+        default=False,
+        verbose_name='Reserva Pública',
+        help_text='Indica si la cita fue reservada por el paciente vía sistema público'
+    )
+    
+    # Creator tracking
+    created_by = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='Creado por',
+        help_text='Usuario que creó la cita'
+    )
+    
     # Notes
     notes = models.TextField(
         blank=True,
@@ -103,6 +133,62 @@ class Appointment(models.Model):
         end = datetime.combine(datetime.today(), self.end_time)
         duration = end - start
         return int(duration.total_seconds() / 60)
+    
+    def clean(self):
+        """Validate appointment data"""
+        super().clean()
+        
+        # Validate business hours (8 AM - 8 PM)
+        if not self.is_within_business_hours():
+            raise ValidationError(
+                'Las citas deben ser entre las 8:00 AM y las 8:00 PM'
+            )
+        
+        # Check for conflicts
+        if self.has_conflicts():
+            raise ValidationError(
+                'Ya existe una cita en este horario para esta unidad dental'
+            )
+    
+    def is_within_business_hours(self):
+        """Check if appointment is within business hours (8 AM - 8 PM)"""
+        business_start = time(8, 0)  # 8:00 AM
+        business_end = time(20, 0)    # 8:00 PM
+        
+        return (
+            self.start_time >= business_start and 
+            self.end_time <= business_end and
+            self.start_time < self.end_time
+        )
+    
+    def has_conflicts(self):
+        """Check for conflicting appointments"""
+        # Build base queryset
+        conflicts = Appointment.objects.filter(
+            date=self.date,
+            status__in=['pending', 'confirmed']
+        )
+        
+        # Exclude current appointment if updating
+        if self.pk:
+            conflicts = conflicts.exclude(pk=self.pk)
+        
+        # If dental_unit is specified, check for conflicts on that unit
+        if self.dental_unit:
+            conflicts = conflicts.filter(dental_unit=self.dental_unit)
+        
+        # Check for time overlap
+        for appt in conflicts:
+            # Check if times overlap
+            if (self.start_time < appt.end_time and self.end_time > appt.start_time):
+                return True
+        
+        return False
+    
+    def save(self, *args, **kwargs):
+        """Override save to run validation"""
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class AppointmentReminder(models.Model):
