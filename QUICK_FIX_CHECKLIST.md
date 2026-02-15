@@ -11,6 +11,20 @@
 
 ## What You Need to Do ⏳
 
+### Step 0: Configure Vercel Root Directory (NEW!)
+
+Your Next.js app is in the `frontend` directory, so Vercel needs to know this:
+
+1. Go to https://vercel.com/dashboard
+2. Select your `dientex` project
+3. Click "Settings"
+4. Scroll to "Root Directory"
+5. Click "Edit"
+6. Enter: `frontend`
+7. Click "Save"
+
+**See [VERCEL_ROOT_DIRECTORY_FIX.md](VERCEL_ROOT_DIRECTORY_FIX.md) for detailed instructions**
+
 ### Step 1: Verify Backend is Running
 ```bash
 curl https://api.dientex.com/health/

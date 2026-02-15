@@ -25,16 +25,24 @@ All API endpoints are now prefixed with `/api/`:
 
 Your Next.js frontend is deployed on Vercel at `https://dientex.com`
 
-### Required Steps in Vercel:
+### Initial Vercel Setup:
 
-1. **Go to your Vercel project settings**
-2. **Navigate to "Environment Variables"**
-3. **Add the following variable:**
-   - Name: `NEXT_PUBLIC_API_URL`
-   - Value: `https://api.dientex.com`
-   - Apply to: Production, Preview, and Development
+1. **Configure Root Directory:**
+   - Go to Project Settings
+   - Find "Root Directory" section
+   - Set to: `frontend`
+   - Save changes
 
-4. **Redeploy your application:**
+2. **Add Environment Variable:**
+   - Go to Settings → Environment Variables
+   - Click "Add New"
+   - Enter:
+     - Name: `NEXT_PUBLIC_API_URL`
+     - Value: `https://api.dientex.com`
+     - Apply to: Production, Preview, and Development
+   - Save
+
+3. **Redeploy your application:**
    - Go to "Deployments" tab
    - Click the three dots on the latest deployment
    - Select "Redeploy"
